@@ -1,60 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Upload, Save, Trash2, Plus } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
-import { JUBA_AREAS, FUEL_TYPES, TRANSMISSION_TYPES, ZONING_TYPES } from '@/lib/constants';
+import { X, Save, Plus } from 'lucide-react';
+import ImageUpload from '@/components/ImageUpload';
+import { apiClient } from '@/lib/api/client';
+import { JUBA_AREAS, FUEL_TYPES, TRANSMISSION_TYPES } from '@/lib/constants';
 
 interface AddListingModalProps {
   category: string;
   onClose: () => void;
   editItem?: any;
+  onSuccess?: () => void;
 }
 
-export default function AddListingModal({ category, onClose, editItem }: AddListingModalProps) {
-  const { state, actions } = useApp();
+export default function AddListingModal({ category, onClose, editItem, onSuccess }: AddListingModalProps) {
   const [formData, setFormData] = useState<any>(editItem || {});
-  const [uploadedImages, setUploadedImages] = useState<string[]>(editItem?.images || []);
-  const [uploading, setUploading] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<any[]>(editItem?.images || []);
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    
-    // Simulate upload - in production, upload to server
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedImages(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (index: number) => {
-    setUploadedImages(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const listing = {
-      ...formData,
-      images: uploadedImages,
-      agent: state.user.profile || {
-        name: 'Aries Ltd Sales',
-        phone: '+211 704 049 044',
-        email: 'sales@ariesltd.com'
-      },
-      status: formData.status || 'active'
-    };
+    setSubmitting(true);
 
-    if (editItem) {
-      actions.updateListing(category, editItem.id, listing);
-    } else {
-      actions.addListing(category, listing);
+    try {
+      const data = {
+        ...formData,
+        images: uploadedImages.map((img, index) => ({
+          url: img.url,
+          alt: formData.title || '',
+          isMain: index === 0,
+        })),
+        agentId: 'default-agent-id', // TODO: Get from session/auth
+      };
+
+      if (category === 'properties' || category === 'rentals' || category === 'airbnb') {
+        await apiClient.createProperty({
+          ...data,
+          category: category === 'properties' ? 'sale' : category === 'rentals' ? 'rent' : 'short-stay',
+        });
+      } else if (category === 'cars') {
+        await apiClient.createCar(data);
+      }
+
+      onClose();
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('Error creating listing:', error);
+      alert('Failed to create listing');
+    } finally {
+      setSubmitting(false);
     }
-    
-    onClose();
   };
 
   return (
@@ -106,7 +103,7 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
                 />
               </div>
 
-              {/* Location */}
+              {/* Location for properties */}
               {category !== 'cars' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -126,24 +123,66 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
                 </div>
               )}
 
-              {/* Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={formData.status || 'active'}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                >
-                  <option value="active">Active</option>
-                  <option value="pending">Pending</option>
-                  <option value="sold">Sold</option>
-                  {category === 'airbnb' && <option value="booked">Booked</option>}
-                </select>
-              </div>
+              {/* Property specific fields */}
+              {(category === 'properties' || category === 'rentals' || category === 'airbnb') && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bedrooms *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.bedrooms || ''}
+                        onChange={(e) => setFormData({ ...formData, bedrooms: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bathrooms *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={formData.bathrooms || ''}
+                        onChange={(e) => setFormData({ ...formData, bathrooms: parseInt(e.target.value) })}
+                      />
+                    </div>
+                  </div>
 
-              {/* Car Specific Fields */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Area (sqft) *
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={formData.area || ''}
+                      onChange={(e) => setFormData({ ...formData, area: parseInt(e.target.value) })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={formData.furnished || false}
+                        onChange={(e) => setFormData({ ...formData, furnished: e.target.checked })}
+                      />
+                      <span className="text-sm font-medium text-gray-700">Furnished</span>
+                    </label>
+                  </div>
+                </>
+              )}
+
+              {/* Car specific fields */}
               {category === 'cars' && (
                 <>
                   <div className="grid grid-cols-2 gap-4">
@@ -181,6 +220,8 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
                       <input
                         type="number"
                         required
+                        min="1900"
+                        max={new Date().getFullYear() + 1}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.year || ''}
                         onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
@@ -193,6 +234,7 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
                       <input
                         type="number"
                         required
+                        min="0"
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                         value={formData.mileage || ''}
                         onChange={(e) => setFormData({ ...formData, mileage: parseInt(e.target.value) })}
@@ -237,18 +279,18 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Features (comma separated)
+                      Condition *
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Alloy Wheels, Leather Seats, Sunroof"
+                    <select
+                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={formData.features?.join(', ') || ''}
-                      onChange={(e) => setFormData({ 
-                        ...formData, 
-                        features: e.target.value.split(',').map(f => f.trim()).filter(f => f) 
-                      })}
-                    />
+                      value={formData.condition || ''}
+                      onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                    >
+                      <option value="">Select Condition</option>
+                      <option value="New">New</option>
+                      <option value="Used">Used</option>
+                    </select>
                   </div>
                 </>
               )}
@@ -273,60 +315,47 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
               {/* Images Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Images (Upload multiple)
+                  Images
                 </label>
-                
-                {/* Upload Area */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mb-4">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
-                  />
-                  <label htmlFor="image-upload" className="cursor-pointer">
-                    <Upload className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">Click to upload images</p>
-                    <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 10MB each</p>
-                  </label>
-                </div>
+                <ImageUpload
+                  onUpload={setUploadedImages}
+                  maxFiles={20}
+                  maxSizeMB={10}
+                />
+              </div>
 
-                {/* Image Preview Grid */}
-                {uploadedImages.length > 0 && (
-                  <div className="grid grid-cols-3 gap-4">
-                    {uploadedImages.map((image, index) => (
-                      <div key={index} className="relative group">
-                        <img 
-                          src={image} 
-                          alt={`Upload ${index + 1}`} 
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                        {index === 0 && (
-                          <span className="absolute bottom-1 left-1 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                            Main
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                    
-                    {/* Add More Button */}
-                    <label
-                      htmlFor="image-upload"
-                      className="border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center h-24 cursor-pointer hover:border-gray-400"
-                    >
-                      <Plus className="w-8 h-8 text-gray-400" />
-                    </label>
-                  </div>
-                )}
+              {/* Features */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Features (comma separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Parking, Security, Garden"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.features?.join(', ') || ''}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    features: e.target.value.split(',').map(f => f.trim()).filter(f => f) 
+                  })}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.status || 'active'}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="sold">Sold</option>
+                  {category === 'airbnb' && <option value="booked">Booked</option>}
+                </select>
               </div>
 
               {/* Featured Toggle */}
@@ -354,10 +383,11 @@ export default function AddListingModal({ category, onClose, editItem }: AddList
             </button>
             <button
               type="submit"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center"
+              disabled={submitting}
+              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center disabled:opacity-50"
             >
               <Save className="w-5 h-5 mr-2" />
-              {editItem ? 'Update' : 'Save'} Listing
+              {submitting ? 'Saving...' : (editItem ? 'Update' : 'Save')} Listing
             </button>
           </div>
         </form>

@@ -8,10 +8,14 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   
   // Optimize images for static export
+  // images: {
+  //   unoptimized: true,
+  // },
   images: {
     unoptimized: true,
+    domains: ['images.unsplash.com'],
+    formats: ['image/avif', 'image/webp'],
   },
-  
   // Disable ESLint during build (for quick deployment)
   eslint: {
     ignoreDuringBuilds: true,
