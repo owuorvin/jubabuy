@@ -9,11 +9,13 @@ import {
     index
   } from 'drizzle-orm/sqlite-core';
   import { sql } from 'drizzle-orm';
-  import { randomUUID } from 'crypto';
+  
+  // Use the Web Crypto API which is available in both Node.js and Edge Runtime
+  const generateId = () => crypto.randomUUID();
   
   // Agents table
   export const agents = sqliteTable('agents', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     name: text('name').notNull(),
     email: text('email').notNull().unique(),
     phone: text('phone').notNull(),
@@ -24,7 +26,7 @@ import {
   
   // Properties table
   export const properties = sqliteTable('properties', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     title: text('title').notNull(),
     slug: text('slug').notNull().unique(),
     price: integer('price').notNull(),
@@ -63,7 +65,7 @@ import {
   
   // Cars table
   export const cars = sqliteTable('cars', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     title: text('title').notNull(),
     slug: text('slug').notNull().unique(),
     price: integer('price').notNull(),
@@ -103,7 +105,7 @@ import {
   
   // Images table
   export const images = sqliteTable('images', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     url: text('url').notNull(),
     alt: text('alt'),
     isMain: integer('is_main', { mode: 'boolean' }).default(false),
@@ -120,7 +122,7 @@ import {
   
   // Favorites table
   export const favorites = sqliteTable('favorites', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     userId: text('user_id').notNull(),
     entityType: text('entity_type').notNull(), // 'property', 'car'
     entityId: text('entity_id').notNull(),
@@ -132,7 +134,7 @@ import {
   
   // Inquiries table
   export const inquiries = sqliteTable('inquiries', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     name: text('name').notNull(),
     email: text('email').notNull(),
     phone: text('phone').notNull(),
@@ -148,7 +150,7 @@ import {
   });
 
   export const land = sqliteTable('land', {
-    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    id: text('id').primaryKey().$defaultFn(() => generateId()),
     title: text('title').notNull(),
     slug: text('slug').notNull().unique(),
     price: integer('price').notNull(),
