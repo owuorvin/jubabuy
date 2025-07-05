@@ -1,19 +1,20 @@
 'use client';
 
 import { Heart, MapPin, Bed, Bath, Square, Camera } from 'lucide-react';
-import { Property } from '@/lib/db/schema';
+import { Land, Car,Property } from '@/lib/db/schema';
 import { useFavorites } from '@/hooks/use-favorites';
 import { formatPrice } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 
 interface PropertyCardProps {
-  property: Property & { images?: any[]; agent?: any };
+  property: Property | Car | Land | any; // Make it more flexible
+  type?: 'property' | 'car' | 'land';
+  viewMode?: 'grid' | 'list';
 }
-
-export default function PropertyCard({ property }: PropertyCardProps) {
+export default function PropertyCard({ property, type = 'property', viewMode = 'grid' }: PropertyCardProps) {
   const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const mainImage = property.images?.find(img => img.isMain) || property.images?.[0];
+  const mainImage = property.images?.find((img: any) => img.isMain) || property.images?.[0];
 
   const handleClick = () => {
     router.push(`/properties/${property.slug}`);

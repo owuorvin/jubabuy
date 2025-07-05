@@ -1,15 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import HeroSearch from '@/components/sections/HeroSearch';
 import ServicesSection from '@/components/sections/ServicesSection';
 import CTASection from '@/components/sections/CTASection';
 import PropertyCard from '@/components/cards/PropertyCard';
-import { ChevronLeft, ChevronRight, Star, Shield, Award, Users, ArrowRight, Mail } from 'lucide-react';
+import { apiClient } from '@/lib/api/client';
+import { ChevronLeft, ChevronRight, Star, Shield, Award, Users, ArrowRight, Mail, Link } from 'lucide-react';
 
 export default function HomePage() {
-  const { state, actions } = useApp();
+  const { state, actions, loading: contextLoading } = useApp();
+  const [featuredProperties, setFeaturedProperties] = useState<any[]>([]);
+  const [featuredCars, setFeaturedCars] = useState<any[]>([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
   const [email, setEmail] = useState('');
   
   // Sample partners data
@@ -37,6 +41,30 @@ export default function HomePage() {
     // Newsletter subscription logic
     console.log('Newsletter subscription:', email);
     setEmail('');
+  };
+
+  useEffect(() => {
+    fetchFeaturedListings();
+  }, []);
+
+  const fetchFeaturedListings = async () => {
+    setLoadingFeatured(true);
+    try {
+      const [propertiesRes, carsRes] = await Promise.all([
+        apiClient.getFeaturedProperties(6),
+        apiClient.getFeaturedCars(6)
+      ]);
+
+      setFeaturedProperties(propertiesRes.data || []);
+      setFeaturedCars(carsRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch featured listings:', error);
+      // Fallback to context data if API fails
+      setFeaturedProperties(state.properties.filter(p => p.featured).slice(0, 6));
+      setFeaturedCars(state.cars.filter(c => c.featured).slice(0, 6));
+    } finally {
+      setLoadingFeatured(false);
+    }
   };
 
   return (
@@ -75,19 +103,30 @@ export default function HomePage() {
               <h2 className="text-4xl font-bold text-gray-900 mb-2">Featured Properties</h2>
               <p className="text-lg text-gray-600">Hand-picked premium properties in prime locations</p>
             </div>
-            <button 
-              onClick={() => actions.setCurrentPage('properties')}
-              className="text-blue-600 hover:text-blue-700 font-semibold flex items-center"
-            >
+            <Link href="/properties" className="text-blue-600 hover:text-blue-700 font-semibold flex items-center">
               View all properties <ArrowRight className="w-5 h-5 ml-2" />
-            </button>
+            </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {state.properties.filter(p => p.featured).slice(0, 6).map((property) => (
-              <PropertyCard key={property.id} property={property} type="property" />
-            ))}
-          </div>
+          {loadingFeatured ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-lg animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-xl"></div>
+                  <div className="p-6">
+                    <div className="h-6 bg-gray-200 rounded mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {featuredProperties.map((property) => (
+                <PropertyCard key={property.id} property={property} type="property" />
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

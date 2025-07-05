@@ -25,11 +25,11 @@ export interface User {
     status: 'active' | 'pending' | 'sold';
     featured: boolean;
     views: number;
-    agent: Agent;
-    images: string[];
     description?: string;
-    location: string;  // Added to BaseItem so all items have location
-    features: string[]; // Added to BaseItem so all items have features
+    location: string;
+    features: string[];
+    agent?: Agent;
+    images?: string[];
   }
   
   export interface Property extends BaseItem {
@@ -39,8 +39,9 @@ export interface User {
     area: number;
     furnished: boolean;
     amenities: string[];
+    category?: string;
   }
-  
+
   export interface Car extends BaseItem {
     year: number;
     make: string;
@@ -86,3 +87,4 @@ export interface User {
     filterOpen: boolean;
     viewMode: 'grid' | 'list';
   }
+

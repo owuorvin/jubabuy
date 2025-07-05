@@ -146,6 +146,38 @@ import {
     createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
     updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
   });
+
+  export const land = sqliteTable('land', {
+    id: text('id').primaryKey().$defaultFn(() => randomUUID()),
+    title: text('title').notNull(),
+    slug: text('slug').notNull().unique(),
+    price: integer('price').notNull(),
+    location: text('location').notNull(),
+    
+    // Land details
+    area: integer('area').notNull(),
+    unit: text('unit').notNull(), // 'sqm', 'acres', 'hectares'
+    zoning: text('zoning').notNull(), // 'Residential', 'Commercial', 'Mixed', 'Agricultural'
+    
+    // Content
+    description: text('description'),
+    features: text('features'), // JSON array
+    
+    // Status
+    status: text('status').notNull().default('active'),
+    featured: integer('featured', { mode: 'boolean' }).default(false),
+    views: integer('views').default(0),
+    
+    // Relations
+    agentId: text('agent_id').notNull().references(() => agents.id),
+    
+    // Timestamps
+    createdAt: integer('created_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).$defaultFn(() => new Date()),
+  }, (table) => ({
+    locationIdx: index('land_location_idx').on(table.location),
+    priceIdx: index('land_price_idx').on(table.price),
+  }));
   
   // Type exports
   export type Agent = typeof agents.$inferSelect;
@@ -156,3 +188,5 @@ import {
   export type NewCar = typeof cars.$inferInsert;
   export type Image = typeof images.$inferSelect;
   export type NewImage = typeof images.$inferInsert;
+  export type Land = typeof land.$inferSelect;
+  export type NewLand = typeof land.$inferInsert;

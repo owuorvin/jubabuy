@@ -14,35 +14,37 @@ interface UsePropertiesOptions {
 }
 
 export function useProperties(options: UsePropertiesOptions = {}) {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 12,
-    total: 0,
-    pages: 0,
-  });
-
-  useEffect(() => {
-    const fetchProperties = async () => {
-      setLoading(true);
-      setError(null);
-
-      const response = await apiClient.getProperties(options);
-
-      if (response.error) {
-        setError(response.error);
-      } else if (response.data) {
-        setProperties(response.data.properties);
-        setPagination(response.data.pagination);
-      }
-
-      setLoading(false);
-    };
-
-    fetchProperties();
-  }, [JSON.stringify(options)]);
-
-  return { properties, loading, error, pagination };
-}
+    const [properties, setProperties] = useState<Property[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [pagination, setPagination] = useState({
+      page: 1,
+      limit: 12,
+      total: 0,
+      pages: 0,
+    });
+  
+    useEffect(() => {
+      const fetchProperties = async () => {
+        setLoading(true);
+        setError(null);
+  
+        const response = await apiClient.getProperties(options);
+  
+        if (response.error) {
+          setError(response.error);
+        } else if (response.data) {
+            setProperties(response.data.items || []); 
+          if (response.pagination) {
+            setPagination(response.pagination);
+          }
+        }
+  
+        setLoading(false);
+      };
+  
+      fetchProperties();
+    }, [JSON.stringify(options)]);
+  
+    return { properties, loading, error, pagination };
+  }

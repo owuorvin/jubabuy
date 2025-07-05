@@ -45,7 +45,7 @@ export default function ListingsTable({ category, searchQuery = '', filterStatus
         sortOrder,
       };
 
-      let response;
+      let response: any;
       if (category === 'properties' || category === 'rentals' || category === 'airbnb') {
         response = await apiClient.getProperties({
           ...params,
@@ -53,11 +53,32 @@ export default function ListingsTable({ category, searchQuery = '', filterStatus
         });
       } else if (category === 'cars') {
         response = await apiClient.getCars(params);
+      } else if (category === 'land') {
+        response = await apiClient.getLand(params);
       }
 
       if (response?.data) {
-        setListings(response.data[category] || response.data.properties || response.data.cars || []);
-        setTotalPages(response.data.pagination?.pages || 1);
+        // Safely extract the listings based on the response structure
+        let items: any[] = [];
+        const responseData = response.data;
+        
+        // Check each possible property and extract if it exists
+        if ('properties' in responseData && Array.isArray(responseData.properties)) {
+          items = responseData.properties;
+        } else if ('cars' in responseData && Array.isArray(responseData.cars)) {
+          items = responseData.cars;
+        } else if ('land' in responseData && Array.isArray(responseData.land)) {
+          items = responseData.land;
+        } else if (Array.isArray(responseData)) {
+          items = responseData;
+        }
+        
+        setListings(items);
+        
+        // Set pagination if it exists
+        if (responseData.pagination) {
+          setTotalPages(responseData.pagination.pages || 1);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch listings:', error);

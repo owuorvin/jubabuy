@@ -1,4 +1,4 @@
-import { db, properties, cars, images, agents } from '@/lib/db';
+import { db, properties, cars, images, agents, land } from '@/lib/db';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 export async function getFeaturedProperties(limit = 6) {
@@ -116,125 +116,131 @@ export async function getPropertyBySlug(slug: string) {
 }
 
 export async function getStats() {
-  const [propertyCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(properties)
-    .where(eq(properties.status, 'active'));
-
-  const [carCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(cars)
-    .where(eq(cars.status, 'active'));
-
-  const [landCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(land)
-    .where(eq(land.status, 'active'));
-
-  const [rentalCount] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(properties)
-    .where(
-      and(
-        eq(properties.status, 'active'),
-        eq(properties.category, 'rent')
-      )
-    );
-
-  const [totalViews] = await db
-    .select({ 
-      views: sql<number>`
-        (SELECT COALESCE(SUM(views), 0) FROM properties) + 
-        (SELECT COALESCE(SUM(views), 0) FROM cars) +
-        (SELECT COALESCE(SUM(views), 0) FROM land)
-      ` 
-    })
-    .from(properties)
-    .limit(1);
-
-  // Calculate total revenue from sold items
-  const [propertyRevenue] = await db
-    .select({ total: sql<number>`COALESCE(SUM(price), 0)` })
-    .from(properties)
-    .where(eq(properties.status, 'sold'));
-
-  const [carRevenue] = await db
-    .select({ total: sql<number>`COALESCE(SUM(price), 0)` })
-    .from(cars)
-    .where(eq(cars.status, 'sold'));
-
-  return {
-    properties: propertyCount.count,
-    cars: carCount.count,
-    land: landCount.count,
-    rentals: rentalCount.count,
-    totalViews: totalViews.views,
-    activeListings: propertyCount.count + carCount.count + landCount.count,
-    totalRevenue: (propertyRevenue.total || 0) + (carRevenue.total || 0),
-    newUsers: Math.floor(Math.random() * 100), // Mock - implement user tracking
-    conversionRate: 3.5, // Mock - calculate from actual data
-  };
-}
-
-export async function getRecentListings(limit = 10) {
-  // Get recent properties
-  const recentProperties = await db
-    .select({
-      id: properties.id,
-      title: properties.title,
-      price: properties.price,
-      location: properties.location,
-      status: properties.status,
-      views: properties.views,
-      createdAt: properties.createdAt,
-      type: sql<string>`'property'`,
-    })
-    .from(properties)
-    .orderBy(desc(properties.createdAt))
-    .limit(Math.floor(limit / 2));
-
-  // Get recent cars
-  const recentCars = await db
-    .select({
-      id: cars.id,
-      title: cars.title,
-      price: cars.price,
-      location: sql<string>`${cars.make} || ' ' || ${cars.model}`,
-      status: cars.status,
-      views: cars.views,
-      createdAt: cars.createdAt,
-      type: sql<string>`'car'`,
-    })
-    .from(cars)
-    .orderBy(desc(cars.createdAt))
-    .limit(Math.floor(limit / 2));
-
-  // Combine and sort by date
-  const combined = [...recentProperties, ...recentCars]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit);
-
-  // Get images for each listing
-  const listingIds = combined.map(item => item.id);
-  const allImages = await db
-    .select()
-    .from(images)
-    .where(
-      and(
-        sql`${images.entityId} IN ${listingIds}`,
-        sql`${images.isMain} = true`
-      )
-    );
-
-  // Map images to listings
-  const imageMap = allImages.reduce((acc, img) => {
-    acc[img.entityId] = img.url;
-    return acc;
-  }, {} as Record<string, string>);
-
-  return combined.map(item => ({
-    ...item,
-    images: [imageMap[item.id] || '/images/placeholder.jpg'],
-  }));
-}
+    const [propertyCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(properties)
+      .where(eq(properties.status, 'active'));
+  
+    const [carCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(cars)
+      .where(eq(cars.status, 'active'));
+  
+    const [landCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(land)
+      .where(eq(land.status, 'active'));
+  
+    const [rentalCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.status, 'active'),
+          eq(properties.category, 'rent')
+        )
+      );
+  
+    const [totalViews] = await db
+      .select({ 
+        views: sql<number>`
+          (SELECT COALESCE(SUM(views), 0) FROM properties) + 
+          (SELECT COALESCE(SUM(views), 0) FROM cars) +
+          (SELECT COALESCE(SUM(views), 0) FROM land)
+        ` 
+      })
+      .from(properties)
+      .limit(1);
+  
+    // Calculate total revenue from sold items
+    const [propertyRevenue] = await db
+      .select({ total: sql<number>`COALESCE(SUM(price), 0)` })
+      .from(properties)
+      .where(eq(properties.status, 'sold'));
+  
+    const [carRevenue] = await db
+      .select({ total: sql<number>`COALESCE(SUM(price), 0)` })
+      .from(cars)
+      .where(eq(cars.status, 'sold'));
+  
+    return {
+      properties: propertyCount.count,
+      cars: carCount.count,
+      land: landCount.count,
+      rentals: rentalCount.count,
+      totalViews: totalViews.views,
+      activeListings: propertyCount.count + carCount.count + landCount.count,
+      totalRevenue: (propertyRevenue.total || 0) + (carRevenue.total || 0),
+      newUsers: Math.floor(Math.random() * 100), // Mock - implement user tracking
+      conversionRate: 3.5, // Mock - calculate from actual data
+    };
+  }
+  
+  export async function getRecentListings(limit = 10) {
+    // Get recent properties
+    const recentProperties = await db
+      .select({
+        id: properties.id,
+        title: properties.title,
+        price: properties.price,
+        location: properties.location,
+        status: properties.status,
+        views: properties.views,
+        createdAt: properties.createdAt,
+        type: sql<string>`'property'`,
+      })
+      .from(properties)
+      .orderBy(desc(properties.createdAt))
+      .limit(Math.floor(limit / 2));
+  
+    // Get recent cars
+    const recentCars = await db
+      .select({
+        id: cars.id,
+        title: cars.title,
+        price: cars.price,
+        location: sql<string>`${cars.make} || ' ' || ${cars.model}`,
+        status: cars.status,
+        views: cars.views,
+        createdAt: cars.createdAt,
+        type: sql<string>`'car'`,
+      })
+      .from(cars)
+      .orderBy(desc(cars.createdAt))
+      .limit(Math.floor(limit / 2));
+  
+    // Combine and sort by date - fix the date handling
+    const combined = [...recentProperties, ...recentCars]
+      .filter(item => item.createdAt !== null)
+      .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      })
+      .slice(0, limit);
+  
+    // Get images for each listing
+    const listingIds = combined.map(item => item.id);
+    const allImages = await db
+      .select()
+      .from(images)
+      .where(
+        and(
+          sql`${images.entityId} IN ${listingIds}`,
+          sql`${images.isMain} = true`
+        )
+      );
+  
+    // Map images to listings
+    const imageMap = allImages.reduce((acc, img) => {
+      acc[img.entityId] = img.url;
+      return acc;
+    }, {} as Record<string, string>);
+  
+    return combined.map(item => ({
+      ...item,
+      images: [imageMap[item.id] || '/images/placeholder.jpg'],
+    }));
+  }
+  
 

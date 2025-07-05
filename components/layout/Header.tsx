@@ -1,12 +1,17 @@
+// components/layout/Header.tsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Menu, X, ChevronDown, User, Settings, Home, Heart, LogOut, Plus, Phone } from 'lucide-react';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { state, actions } = useApp();
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -84,16 +89,8 @@ export default function Header() {
               </div>
             </NavDropdown>
 
-            {/* <NavLink onClick={() => actions.setCurrentPage('agents')}>
-              Estate Agents
-            </NavLink> */}
-
-            {/* <NavLink onClick={() => actions.setCurrentPage('advice')}>
-              Property Advice
-            </NavLink> */}
-
-            {state.user.isAdmin && (
-              <NavLink onClick={() => actions.setCurrentPage('admin')} color="text-orange-600">
+            {isAdmin && (
+              <NavLink onClick={() => router.push('/admin')} color="text-orange-600">
                 Admin
               </NavLink>
             )}
@@ -139,7 +136,7 @@ export default function Header() {
   );
 }
 
-// Subcomponents
+// Logo Component
 function Logo() {
   return (
     <div className="w-12 h-12 mr-3">
@@ -172,6 +169,7 @@ function Logo() {
   );
 }
 
+// NavLink Component
 function NavLink({ children, onClick, color = "text-gray-700" }: { 
   children: React.ReactNode; 
   onClick: () => void;
@@ -187,6 +185,7 @@ function NavLink({ children, onClick, color = "text-gray-700" }: {
   );
 }
 
+// NavDropdown Component
 function NavDropdown({ title, children, color = "text-gray-700" }: { 
   title: string; 
   children: React.ReactNode;
@@ -204,6 +203,7 @@ function NavDropdown({ title, children, color = "text-gray-700" }: {
   );
 }
 
+// DropdownSection Component
 function DropdownSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
@@ -217,6 +217,7 @@ function DropdownSection({ title, children }: { title: string; children: React.R
   );
 }
 
+// DropdownLink Component
 function DropdownLink({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button 
@@ -228,62 +229,7 @@ function DropdownLink({ children, onClick }: { children: React.ReactNode; onClic
   );
 }
 
-function UserMenu() {
-  const { state, actions } = useApp();
-  const [open, setOpen] = useState(false);
-
-  return (
-    <div className="relative">
-      <button 
-        onClick={() => setOpen(!open)}
-        className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-      >
-        <User className="w-5 h-5 text-gray-700" />
-      </button>
-      
-      {open && (
-        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl py-2 border border-gray-100">
-          {state.user.isAuthenticated ? (
-            <>
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-900">{state.user.profile?.name}</p>
-                <p className="text-xs text-gray-500">{state.user.profile?.email}</p>
-              </div>
-              {state.user.isAdmin && (
-                <MenuLink onClick={() => { actions.setCurrentPage('admin'); setOpen(false); }} icon={Settings}>
-                  Admin Dashboard
-                </MenuLink>
-              )}
-              <MenuLink onClick={() => { actions.setCurrentPage('my-properties'); setOpen(false); }} icon={Home}>
-                My Properties
-              </MenuLink>
-              <MenuLink onClick={() => { actions.setCurrentPage('favorites'); setOpen(false); }} icon={Heart}>
-                Saved Listings ({state.favorites.length})
-              </MenuLink>
-              <MenuLink onClick={() => { actions.setCurrentPage('profile'); setOpen(false); }} icon={User}>
-                Profile Settings
-              </MenuLink>
-              <hr className="my-2" />
-              <MenuLink onClick={() => { actions.logout(); setOpen(false); }} icon={LogOut}>
-                Sign Out
-              </MenuLink>
-            </>
-          ) : (
-            <>
-              <MenuLink onClick={() => { actions.setCurrentPage('login'); setOpen(false); }} icon={User}>
-                Login / Register
-              </MenuLink>
-              <div className="px-4 py-2">
-                <p className="text-xs text-gray-500">Sign in to save listings and get personalized recommendations</p>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
+// MenuLink Component
 function MenuLink({ children, onClick, icon: Icon }: { 
   children: React.ReactNode; 
   onClick: () => void; 
@@ -300,8 +246,70 @@ function MenuLink({ children, onClick, icon: Icon }: {
   );
 }
 
+// UserMenu Component
+function UserMenu() {
+  const { state, actions } = useApp(); 
+  const { isAuthenticated, isAdmin, user, logout } = useAuth();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button 
+        onClick={() => setOpen(!open)}
+        className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+      >
+        <User className="w-5 h-5 text-gray-700" />
+      </button>
+      
+      {open && (
+        <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl py-2 border border-gray-100">
+          {isAuthenticated ? (
+            <>
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+              {isAdmin && (
+                <MenuLink onClick={() => { router.push('/admin'); setOpen(false); }} icon={Settings}>
+                  Admin Dashboard
+                </MenuLink>
+              )}
+              <MenuLink onClick={() => { actions.setCurrentPage('my-properties'); setOpen(false); }} icon={Home}>
+                My Properties
+              </MenuLink>
+              <MenuLink onClick={() => { actions.setCurrentPage('favorites'); setOpen(false); }} icon={Heart}>
+                Saved Listings ({state.favorites.length})
+              </MenuLink>
+              <MenuLink onClick={() => { actions.setCurrentPage('profile'); setOpen(false); }} icon={User}>
+                Profile Settings
+              </MenuLink>
+              <hr className="my-2" />
+              <MenuLink onClick={() => { logout(); setOpen(false); }} icon={LogOut}>
+                Sign Out
+              </MenuLink>
+            </>
+          ) : (
+            <>
+              <MenuLink onClick={() => { router.push('/login'); setOpen(false); }} icon={User}>
+                Login / Register
+              </MenuLink>
+              <div className="px-4 py-2">
+                <p className="text-xs text-gray-500">Sign in to save listings and get personalized recommendations</p>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// MobileMenu Component
 function MobileMenu({ setMobileMenuOpen }: { setMobileMenuOpen: (open: boolean) => void }) {
-  const { state, actions } = useApp();
+  const { actions } = useApp();
+  const { isAdmin } = useAuth();
+  const router = useRouter();
   
   const handleNavigation = (page: string) => {
     actions.setCurrentPage(page);
@@ -340,8 +348,10 @@ function MobileMenu({ setMobileMenuOpen }: { setMobileMenuOpen: (open: boolean) 
         <MobileNavLink onClick={() => handleNavigation('airbnb')}>Short Stay</MobileNavLink>
         <MobileNavLink onClick={() => handleNavigation('agents')}>Estate Agents</MobileNavLink>
         
-        {state.user.isAdmin && (
-          <MobileNavLink onClick={() => handleNavigation('admin')}>Admin</MobileNavLink>
+        {isAdmin && (
+          <MobileNavLink onClick={() => { router.push('/admin'); setMobileMenuOpen(false); }}>
+            Admin
+          </MobileNavLink>
         )}
 
         {/* List Property Button */}
@@ -359,6 +369,7 @@ function MobileMenu({ setMobileMenuOpen }: { setMobileMenuOpen: (open: boolean) 
   );
 }
 
+// MobileNavSection Component
 function MobileNavSection({ title, children }: { title: string; children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -380,6 +391,7 @@ function MobileNavSection({ title, children }: { title: string; children: React.
   );
 }
 
+// MobileNavLink Component
 function MobileNavLink({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
     <button 

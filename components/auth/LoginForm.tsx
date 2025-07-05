@@ -2,24 +2,25 @@
 
 import { useState } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { useApp } from '@/contexts/AppContext';
-import { useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
-export default function LoginForm() {
-  const { actions } = useApp();
-  const router = useRouter();
+export default function LoginPage() {
+  const { login, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = actions.login(email, password);
-    if (success) {
-      router.push('/admin');
-    } else {
+    setError('');
+    setLoading(true);
+    
+    const success = await login(email, password);
+    if (!success) {
       setError('Invalid credentials. Use admin@ariesltd.com / admin123');
     }
+    setLoading(false);
   };
 
   return (
@@ -41,6 +42,7 @@ export default function LoginForm() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              disabled={loading}
             />
           </div>
           <div className="mb-6">
@@ -51,13 +53,15 @@ export default function LoginForm() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
+              disabled={loading}
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
-            Login
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
         <p className="text-center text-sm text-gray-600 mt-4">

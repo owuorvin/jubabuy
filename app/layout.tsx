@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
-import { AppProvider } from '@/contexts/AppContext';
+import { Providers } from './providers';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Aries Ltd - Premium Real Estate & Automotive',
+  title: 'JUBABUY - Premium Real Estate & Automotive',
   description: 'Your trusted partner for real estate and automotive solutions in Juba, South Sudan',
 };
 
@@ -18,11 +18,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AppProvider>
+        <Providers>
           <div className="min-h-screen bg-gray-50">
             {children}
           </div>
-        </AppProvider>
+        </Providers>
       </body>
     </html>
   );

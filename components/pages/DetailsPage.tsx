@@ -1,13 +1,16 @@
+// components/pages/DetailsPage.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ArrowLeft, Share2, Heart, Phone, MessageCircle, 
   MapPin, Calendar, Eye, ChevronLeft, ChevronRight,
-  Copy, Check, Car, Fuel, Settings, Users
+  Copy, Check, Car, Fuel, Settings, Users, AlertCircle
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/contexts/AppContext';
 import { formatPrice } from '@/lib/utils';
+import { apiClient } from '@/lib/api/client';
 
 interface DetailsPageProps {
   itemId: string;
@@ -15,21 +18,49 @@ interface DetailsPageProps {
 }
 
 export default function DetailsPage({ itemId, type }: DetailsPageProps) {
+  const router = useRouter();
   const { state, actions } = useApp();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showPhoneNumber, setShowPhoneNumber] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [item, setItem] = useState<any>(null);
   
-  // Find the item from state
-  const allItems = [...state.properties, ...state.cars, ...state.land, ...state.rentals, ...state.airbnb];
-  const item = allItems.find(i => i.id === itemId);
+  useEffect(() => {
+    fetchItemDetails();
+  }, [itemId, type]);
+
+  const fetchItemDetails = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      let response;
+      
+      if (type === 'car') {
+        response = await apiClient.getCar(itemId);
+      } else if (type === 'land') {
+        response = await apiClient.getLandById(itemId);
+      } else {
+        response = await apiClient.getProperty(itemId);
+      }
+
+      if (response.data) {
+        setItem(response.data);
+      } else if (response.error) {
+        setError(response.error);
+      }
+    } catch (err) {
+      console.error('Failed to fetch item details:', err);
+      setError('Failed to load details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   
-  if (!item) {
-    return <div>Item not found</div>;
-  }
-  
-  const isFavorite = state.favorites.includes(item.id);
-  const images = item.images || [];
+  const isFavorite = state.favorites.includes(itemId);
+  const images = item?.images || [];
   
   const handleShare = async (method: 'copy' | 'whatsapp') => {
     const url = `${window.location.origin}/details/${itemId}`;
@@ -39,18 +70,18 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } else {
-      const text = `Check out this ${item.title} on Aries Ltd: ${url}`;
+      const text = `Check out this ${item?.title} on JUBABUY: ${url}`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
   };
   
   const handleContact = (method: 'call' | 'whatsapp') => {
-    const phone = '211704049044'; // Remove + and spaces
+    const phone = '211704049044';
     
     if (method === 'call') {
       window.location.href = `tel:+${phone}`;
     } else {
-      const message = `Hi, I'm interested in ${item.title} (ID: ${item.id})`;
+      const message = `Hi, I'm interested in ${item?.title} (ID: ${itemId})`;
       window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, '_blank');
     }
   };
@@ -63,6 +94,39 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
     setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !item) {
+    return (
+      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            {error || 'Item not found'}
+          </h1>
+          <p className="text-gray-600 mb-6">
+            The listing you're looking for might have been removed or doesn't exist.
+          </p>
+          <button 
+            onClick={() => router.back()}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          >
+            Go Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pt-20">
       {/* Header */}
@@ -70,7 +134,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button 
-              onClick={() => actions.setCurrentPage('home')}
+              onClick={() => router.back()}
               className="flex items-center text-gray-600 hover:text-gray-900"
             >
               <ArrowLeft className="w-5 h-5 mr-2" />
@@ -79,7 +143,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
             
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => actions.toggleFavorite(item.id)}
+                onClick={() => actions.toggleFavorite(itemId)}
                 className="p-2 rounded-full hover:bg-gray-100"
               >
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-600'}`} />
@@ -119,8 +183,8 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
             <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
               <div className="relative h-96 lg:h-[500px]">
                 <img 
-                  src={images[currentImageIndex] || '/images/placeholder.jpg'}
-                  alt={item.title}
+                  src={images[currentImageIndex]?.url || '/images/placeholder.jpg'}
+                  alt={images[currentImageIndex]?.alt || item.title}
                   className="w-full h-full object-cover"
                 />
                 
@@ -142,7 +206,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                 )}
                 
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
-                  {images.map((_, index) => (
+                  {images.map((_: any, index: number) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -157,7 +221,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
               {/* Thumbnail Gallery */}
               {images.length > 1 && (
                 <div className="p-4 grid grid-cols-4 md:grid-cols-6 gap-2">
-                  {images.map((img, index) => (
+                  {images.map((img: any, index: number) => (
                     <button
                       key={index}
                       onClick={() => setCurrentImageIndex(index)}
@@ -166,8 +230,8 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                       }`}
                     >
                       <img 
-                        src={img}
-                        alt={`${item.title} ${index + 1}`}
+                        src={img.url}
+                        alt={img.alt || `${item.title} ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
                     </button>
@@ -185,6 +249,28 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                 <span>{item.location || 'Juba, South Sudan'}</span>
               </div>
               
+              {/* Property Specific Details */}
+              {type === 'property' && 'bedrooms' in item && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Bedrooms</p>
+                    <p className="font-semibold">{item.bedrooms}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Bathrooms</p>
+                    <p className="font-semibold">{item.bathrooms}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Area</p>
+                    <p className="font-semibold">{item.area} sqm</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Furnished</p>
+                    <p className="font-semibold">{item.furnished ? 'Yes' : 'No'}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Car Specific Details */}
               {type === 'car' && 'make' in item && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -201,7 +287,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <Settings className="w-6 h-6 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-500">Mileage</p>
-                    <p className="font-semibold">{item.mileage.toLocaleString()} km</p>
+                    <p className="font-semibold">{item.mileage?.toLocaleString()} km</p>
                   </div>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <Fuel className="w-6 h-6 text-gray-400 mb-2" />
@@ -210,24 +296,57 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                   </div>
                 </div>
               )}
+
+              {/* Land Specific Details */}
+              {type === 'land' && 'area' in item && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Area</p>
+                    <p className="font-semibold">{item.area} {item.unit}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Zoning</p>
+                    <p className="font-semibold">{item.zoning}</p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm text-gray-500">Location</p>
+                    <p className="font-semibold">{item.location}</p>
+                  </div>
+                </div>
+              )}
               
               {/* Description */}
               <div className="mb-6">
                 <h2 className="text-xl font-semibold mb-3">Description</h2>
-                <p className="text-gray-600 leading-relaxed">
+                <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
                   {item.description || `This ${item.title} is available for immediate purchase. Contact us for more details and to schedule a viewing.`}
                 </p>
               </div>
               
               {/* Features */}
-              {item.features && (
-                <div>
+              {item.features && item.features.length > 0 && (
+                <div className="mb-6">
                   <h2 className="text-xl font-semibold mb-3">Features</h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {item.features.map((feature: string, index: number) => (
                       <div key={index} className="flex items-center text-gray-600">
                         <Check className="w-5 h-5 text-green-500 mr-2" />
                         <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Amenities (for properties) */}
+              {item.amenities && item.amenities.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold mb-3">Amenities</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {item.amenities.map((amenity: string, index: number) => (
+                      <div key={index} className="flex items-center text-gray-600">
+                        <Check className="w-5 h-5 text-blue-500 mr-2" />
+                        <span>{amenity}</span>
                       </div>
                     ))}
                   </div>
@@ -273,26 +392,28 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
               </div>
               
               {/* Agent Info */}
-              <div className="mt-6 pt-6 border-t">
-                <p className="text-sm text-gray-500 mb-2">Listed by</p>
-                <div className="flex items-center">
-                  <img 
-                    src={`https://ui-avatars.com/api/?name=${item.agent?.name}&background=e5e7eb&color=374151&bold=true`}
-                    alt={item.agent?.name}
-                    className="w-12 h-12 rounded-full mr-3"
-                  />
-                  <div>
-                    <p className="font-semibold">{item.agent?.name}</p>
-                    <p className="text-sm text-gray-500">Verified Agent</p>
+              {item.agent && (
+                <div className="mt-6 pt-6 border-t">
+                  <p className="text-sm text-gray-500 mb-2">Listed by</p>
+                  <div className="flex items-center">
+                    <img 
+                      src={item.agent.avatar || `https://ui-avatars.com/api/?name=${item.agent.name}&background=e5e7eb&color=374151&bold=true`}
+                      alt={item.agent.name}
+                      className="w-12 h-12 rounded-full mr-3"
+                    />
+                    <div>
+                      <p className="font-semibold">{item.agent.name}</p>
+                      <p className="text-sm text-gray-500">Verified Agent</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
               
               {/* Stats */}
               <div className="mt-6 pt-6 border-t flex items-center justify-between text-sm text-gray-500">
                 <span className="flex items-center">
                   <Eye className="w-4 h-4 mr-1" />
-                  {item.views} views
+                  {item.views || 0} views
                 </span>
                 <span className="flex items-center">
                   <Calendar className="w-4 h-4 mr-1" />
