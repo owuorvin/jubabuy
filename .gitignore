@@ -61,3 +61,4 @@ dist/
 .turso/
 .vercel/
 *.backup" > .gitignore
+.vercel

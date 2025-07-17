@@ -107,7 +107,7 @@ function generateMockItem(type: string, index: number): any {
     agent: {
       id: `agent-${Math.floor(Math.random() * 5)}`,
       name: ['John Doe', 'Jane Smith', 'Mike Johnson', 'Sarah Wilson'][Math.floor(Math.random() * 4)],
-      phone: '+211 123 456 789',
+      phone: '+211981779330',
       email: 'agent@ariesltd.com'
     }
   };

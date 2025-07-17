@@ -1,356 +1,380 @@
+// components/sections/HeroSearch.tsx
+'use client';
+
 import { useState } from 'react';
-import { Search, MapPin, DollarSign, ChevronDown, X, Car, Home, Building, Hotel } from 'lucide-react';
+import { Search, MapPin, DollarSign, ChevronDown, Home, Building, Car } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useApp } from '@/contexts/AppContext';
 
-// Mock data and context
-const JUBA_AREAS = ['Juba', 'Munuki', 'Hai Cinema', 'New Site', 'Kator', 'Rock City'];
+// Define types for better type safety
+interface SubCategory {
+  id: string;
+  label: string;
+  icon: string;
+  route: string;
+  filters: Record<string, string>;
+}
 
-const useApp = () => ({
-  actions: {
-    setCurrentPage: (page: string) => console.log('Navigate to:', page),
-    setFilters: (filters: any) => console.log('Set filters:', filters)
-  }
-});
+interface Tab {
+  id: string;
+  label: string;
+  labelShort: string; // Add short label for mobile
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  subCategories: SubCategory[];
+}
 
 export default function HeroSearch() {
+  const router = useRouter();
   const { actions } = useApp();
-  const [activeTab, setActiveTab] = useState('for-sale');
-  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [recentSearches] = useState([
-    'Houses for sale in Juba',
-    'Used cars in South Sudan',
-    'Land for sale Juba',
-    'Short stay apartments'
-  ]);
+  const [activeTab, setActiveTab] = useState('houses');
+  const [selectedSubCategory, setSelectedSubCategory] = useState('');
+  const [showSubMenu, setShowSubMenu] = useState(false);
   const [filters, setFilters] = useState({
-    category: '',
     location: '',
-    maxPrice: ''
+    maxPrice: '',
+    propertyType: '',
+    searchQuery: ''
   });
 
-  const tabs = [
-    { id: 'for-sale', label: 'SALE', color: 'bg-blue-600', icon: Home },
-    { id: 'for-rent', label: 'RENT', color: 'bg-blue-600', icon: Building },
-    { id: 'vehicles', label: 'CARS', color: 'bg-blue-600', icon: Car },
-    { id: 'short-stay', label: 'STAY', color: 'bg-green-600', icon: Hotel }
+  const tabs: Tab[] = [
+    {
+      id: 'houses',
+      label: 'HOUSES',
+      labelShort: 'Houses', // Shorter label for mobile
+      icon: Home,
+      color: 'bg-blue-600',
+      subCategories: [
+        { id: 'buy', label: 'Buy House', icon: '🏠', route: 'properties', filters: { category: 'sale' } },
+        { id: 'rent', label: 'Rent House', icon: '🏘️', route: 'rentals', filters: { category: 'rent' } },
+        { id: 'short-stay', label: 'Short Stay / Airbnb', icon: '🏨', route: 'airbnb', filters: { category: 'short-stay' } }
+      ]
+    },
+    {
+      id: 'land',
+      label: 'LAND',
+      labelShort: 'Land',
+      icon: Building,
+      color: 'bg-green-600',
+      subCategories: [
+        { id: 'sale', label: 'Sale Land', icon: '🏞️', route: 'land', filters: { landCategory: 'sale' } },
+        { id: 'lease', label: 'Lease Land', icon: '📜', route: 'land', filters: { landCategory: 'lease' } },
+        { id: 'rent', label: 'Rent Land', icon: '🌾', route: 'land', filters: { landCategory: 'rent' } }
+      ]
+    },
+    {
+      id: 'vehicles',
+      label: 'VEHICLES',
+      labelShort: 'Cars',
+      icon: Car,
+      color: 'bg-red-600',
+      subCategories: [
+        { id: 'new', label: 'New Vehicles', icon: '🚗', route: 'cars', filters: { condition: 'New', carCategory: 'sale' } },
+        { id: 'used', label: 'Used Vehicles', icon: '🚙', route: 'cars', filters: { condition: 'Used', carCategory: 'sale' } },
+        { id: 'rent', label: 'Car Hire / Rental', icon: '🚕', route: 'cars', filters: { carCategory: 'rent' } }
+      ]
+    }
   ];
 
-  const getCategories = () => {
-    switch (activeTab) {
-      case 'for-sale':
-        return [
-          { label: 'Houses for Sale', type: 'property', icon: '🏠' },
-          { label: 'Apartments for Sale', type: 'property', icon: '🏢' },
-          { label: 'Villas for Sale', type: 'property', icon: '🏛️' },
-          { label: 'Commercial Property for Sale', type: 'property', icon: '🏪' },
-          { label: 'Land for Sale', type: 'property', icon: '🏞️' }
-        ];
-      case 'for-rent':
-        return [
-          { label: 'Houses for Rent', type: 'property', icon: '🏠' },
-          { label: 'Apartments for Rent', type: 'property', icon: '🏢' },
-          { label: 'Commercial Property for Rent', type: 'property', icon: '🏪' },
-          { label: 'Office Space for Rent', type: 'property', icon: '🏢' }
-        ];
-      case 'vehicles':
-        return [
-          { label: 'New Cars', type: 'vehicle', icon: '🚗' },
-          { label: 'Used Cars', type: 'vehicle', icon: '🚙' },
-          { label: 'SUVs', type: 'vehicle', icon: '🚐' },
-          { label: 'Trucks', type: 'vehicle', icon: '🚛' },
-          { label: 'Motorcycles', type: 'vehicle', icon: '🏍️' },
-          { label: 'Commercial Vehicles', type: 'vehicle', icon: '🚚' }
-        ];
-      case 'short-stay':
-        return [
-          { label: 'Furnished Apartments', type: 'property', icon: '🏨' },
-          { label: 'Hotel Apartments', type: 'property', icon: '🏩' },
-          { label: 'Guest Houses', type: 'property', icon: '🏘️' },
-          { label: 'Vacation Rentals', type: 'property', icon: '🏖️' }
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const isVehicleCategory = () => {
-    return activeTab === 'vehicles' || getCategories().find(cat => cat.label === selectedCategory)?.type === 'vehicle';
-  };
-
-  const handleSearch = () => {
-    const categoryMap: Record<string, string> = {
-      'Houses for Sale': 'properties',
-      'Apartments for Sale': 'properties',
-      'Villas for Sale': 'properties',
-      'Commercial Property for Sale': 'properties',
-      'Land for Sale': 'land',
-      'New Cars': 'cars',
-      'Used Cars': 'cars',
-      'SUVs': 'cars',
-      'Trucks': 'cars',
-      'Motorcycles': 'cars',
-      'Commercial Vehicles': 'cars',
-      'Houses for Rent': 'rentals',
-      'Apartments for Rent': 'rentals',
-      'Commercial Property for Rent': 'rentals',
-      'Office Space for Rent': 'rentals',
-      'Furnished Apartments': 'airbnb',
-      'Hotel Apartments': 'airbnb',
-      'Guest Houses': 'airbnb',
-      'Vacation Rentals': 'airbnb'
-    };
-    
-    actions.setFilters({
-      ...filters,
-      propertyType: selectedCategory,
-      searchQuery: searchQuery
-    });
-    
-    const targetPage = categoryMap[selectedCategory] || (activeTab === 'vehicles' ? 'cars' : 'properties');
-    actions.setCurrentPage(targetPage);
-  };
-
-  const clearRecentSearch = (index: number) => {
-    console.log('Clear recent search:', index);
-  };
+  const currentTab = tabs.find(tab => tab.id === activeTab);
 
   const getPlaceholderText = () => {
     switch (activeTab) {
       case 'vehicles':
-        return 'What car are you looking for?';
-      case 'for-rent':
-        return 'What rental property are you looking for?';
-      case 'short-stay':
-        return 'What accommodation are you looking for?';
+        return 'Search for cars, SUVs, trucks...';
+      case 'land':
+        return 'Search for land, plots...';
       default:
-        return 'What property are you looking for?';
+        return 'Search for houses, apartments, villas...';
     }
   };
 
-  const getCategoryPlaceholder = () => {
-    const categories = getCategories();
-    if (categories.length > 0) {
-      return categories[0].label;
+  const getPriceOptions = () => {
+    if (activeTab === 'vehicles') {
+      return [
+        { value: '5000', label: '$5,000' },
+        { value: '10000', label: '$10,000' },
+        { value: '25000', label: '$25,000' },
+        { value: '50000', label: '$50,000' },
+        { value: '100000', label: '$100,000+' }
+      ];
     }
-    return 'Select category';
+    return [
+      { value: '50000', label: '$50,000' },
+      { value: '100000', label: '$100,000' },
+      { value: '200000', label: '$200,000' },
+      { value: '500000', label: '$500,000' },
+      { value: '1000000', label: '$1,000,000+' }
+    ];
+  };
+
+  const locations = [
+    'HAI CINEMA', 'NEW SITE', 'MUNUKI', 'JEBEL', 'GUDELE', 
+    'LOLOGO', 'THONGPINY', 'AMARAT', 'KONYOKONYO', 'CUSTOM MARKET'
+  ];
+
+  const handleSearch = () => {
+    if (!selectedSubCategory) {
+      alert('Please select a category first');
+      return;
+    }
+
+    if (!currentTab) {
+      alert('Please select a tab first');
+      return;
+    }
+
+    const subCat = currentTab.subCategories.find((sub: SubCategory) => sub.id === selectedSubCategory);
+    if (subCat) {
+      // Set filters with all the search parameters
+      const searchFilters = {
+        ...filters,
+        priceMax: filters.maxPrice,
+        ...subCat.filters
+      };
+      
+      // Remove empty values
+      Object.keys(searchFilters).forEach(key => {
+        if (!searchFilters[key as keyof typeof searchFilters]) {
+          delete searchFilters[key as keyof typeof searchFilters];
+        }
+      });
+      
+      actions.setFilters(searchFilters);
+      
+      // Navigate to the appropriate page
+      actions.setCurrentPage(subCat.route);
+    }
+  };
+
+  const handleQuickSearch = (quickFilters: Partial<typeof filters>) => {
+    setFilters({ ...filters, ...quickFilters });
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50 overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230066CC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            backgroundSize: '40px 40px'
-          }} />
-        </div>
-        
-        {/* Floating shapes */}
-        <div className="absolute top-20 right-4 w-16 h-16 sm:top-32 sm:right-20 sm:w-32 sm:h-32 bg-blue-100/20 rounded-full blur-xl"></div>
-        <div className="absolute top-32 left-4 w-12 h-12 sm:top-48 sm:left-16 sm:w-24 sm:h-24 bg-green-100/20 rounded-full blur-xl"></div>
+    <div className="relative min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 overflow-hidden">
+      {/* Animated Background Pattern */}
+      <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+                           radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+                           radial-gradient(circle at 40% 20%, rgba(239, 68, 68, 0.1) 0%, transparent 50%)`,
+        }} />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 pt-20 sm:pt-24 md:pt-32">
+      <div className="relative z-10 container mx-auto px-4 pt-24 md:pt-32">
         {/* Hero Title */}
         <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-3 md:mb-6 leading-tight px-2">
-            Find Your Perfect
-            <span className="bg-gradient-to-r from-blue-600 to-green-500 bg-clip-text text-transparent block mt-1"> 
+          <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold text-gray-900 mb-3 md:mb-4">
+            Find Your Dream
+            <span className="block mt-1 md:mt-2 bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
               Property & Vehicle
             </span>
           </h1>
-          <p className="text-sm sm:text-base md:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed px-4">
-            Discover premium real estate, luxury vehicles, and short-stay accommodations in South Sudan
+          <p className="text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
+            South Sudan's #1 marketplace for real estate, land, and vehicles
           </p>
         </div>
 
         {/* Search Section */}
-        <div className="w-full max-w-6xl mx-auto">
-          {/* Tabs - 2x2 Grid Layout like Screenshot */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
-            {tabs.map((tab) => {
-              const IconComponent = tab.icon;
-              return (
+        <div className="max-w-5xl mx-auto">
+          {/* Main Tabs - Responsive Design */}
+          <div className="flex justify-center mb-4 md:mb-6">
+            <div className="bg-white rounded-xl md:rounded-2xl shadow-lg p-1 md:p-2 flex space-x-1 md:space-x-2 w-full max-w-md md:max-w-none">
+              {tabs.map((tab) => {
+                const IconComponent = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setSelectedSubCategory('');
+                      setShowSubMenu(false);
+                    }}
+                    className={`flex-1 md:flex-initial flex items-center justify-center px-2 sm:px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-xl transition-all duration-200 ${
+                      activeTab === tab.id
+                        ? `${tab.color} text-white shadow-lg`
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <IconComponent className="w-4 md:w-5 h-4 md:h-5 mr-1 md:mr-2" />
+                    {/* Show short label on mobile, full label on desktop */}
+                    <span className="font-semibold text-xs sm:text-sm md:text-base">
+                      <span className="md:hidden">{tab.labelShort}</span>
+                      <span className="hidden md:inline">{tab.label}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub-categories - Responsive */}
+          {currentTab && (
+            <div className="flex justify-center mb-4 md:mb-6">
+              <div className="bg-white rounded-lg md:rounded-xl shadow-md p-1 w-full max-w-lg md:max-w-none">
+                <div className="flex flex-wrap justify-center gap-1">
+                  {currentTab.subCategories.map((subCat) => (
+                    <button
+                      key={subCat.id}
+                      onClick={() => setSelectedSubCategory(subCat.id)}
+                      className={`px-3 sm:px-4 md:px-6 py-2 md:py-2.5 rounded-md md:rounded-lg transition-all duration-200 text-xs sm:text-sm md:text-base ${
+                        selectedSubCategory === subCat.id
+                          ? 'bg-gray-900 text-white'
+                          : 'bg-white text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <span className="mr-1 md:mr-2">{subCat.icon}</span>
+                      <span className="hidden sm:inline">{subCat.label}</span>
+                      <span className="sm:hidden">{subCat.label.split('/')[0]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Search Form - Responsive */}
+          <div className="bg-white rounded-2xl md:rounded-3xl shadow-xl md:shadow-2xl p-4 sm:p-6 md:p-8">
+            {/* Search Input */}
+            <div className="mb-4 md:mb-6">
+              <input
+                type="text"
+                placeholder={getPlaceholderText()}
+                value={filters.searchQuery}
+                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                className="w-full px-4 md:px-6 py-3 md:py-4 bg-gray-50 border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-base md:text-lg"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+              {/* Location Dropdown */}
+              <div className="relative">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
+                  Location
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 md:w-5 h-4 md:h-5" />
+                  <select
+                    value={filters.location}
+                    onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+                    className="w-full pl-10 md:pl-12 pr-8 md:pr-10 py-3 md:py-4 bg-gray-50 border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-sm md:text-base"
+                  >
+                    <option value="">All Locations</option>
+                    {locations.map(location => (
+                      <option key={location} value={location}>{location}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 md:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 md:w-5 h-4 md:h-5 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Price Range */}
+              <div className="relative">
+                <label className="block text-xs md:text-sm font-semibold text-gray-700 mb-1 md:mb-2">
+                  Max Price
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 md:w-5 h-4 md:h-5" />
+                  <select
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                    className="w-full pl-10 md:pl-12 pr-8 md:pr-10 py-3 md:py-4 bg-gray-50 border-2 border-gray-200 rounded-lg md:rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-sm md:text-base"
+                  >
+                    <option value="">Any Price</option>
+                    {getPriceOptions().map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 md:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 md:w-5 h-4 md:h-5 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Search Button */}
+              <div className="relative">
+                <label className="hidden md:block text-xs md:text-sm font-semibold text-transparent mb-1 md:mb-2">
+                  Search
+                </label>
                 <button
-                  key={tab.id}
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setSelectedCategory('');
-                  }}
-                  className={`flex flex-col items-center justify-center py-6 px-4 rounded-xl transition-all duration-200 ${
-                    activeTab === tab.id 
-                      ? 'bg-blue-600 text-white shadow-lg' 
-                      : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                  onClick={handleSearch}
+                  disabled={!selectedSubCategory}
+                  className={`w-full py-3 md:py-4 rounded-lg md:rounded-xl transition-all duration-200 font-semibold text-base md:text-lg flex items-center justify-center mt-6 md:mt-0 ${
+                    selectedSubCategory
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
-                  <IconComponent className="w-6 h-6 mb-2" />
-                  <span className="font-bold text-sm">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search Form - All Fields in One Row like Screenshot */}
-          <div className="bg-white rounded-2xl shadow-2xl p-6">
-            <div className="space-y-4">
-              {/* All Fields in One Row for Medium+ Screens */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                {/* Category Field */}
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
-                  <button
-                    onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-left flex items-center justify-between hover:border-gray-300"
-                  >
-                    <span className="text-gray-500">
-                      {selectedCategory || 'Select Category'}
-                    </span>
-                    <ChevronDown className={`w-5 h-5 transition-transform flex-shrink-0 ml-2 text-gray-400 ${showCategoryDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Category Dropdown */}
-                  {showCategoryDropdown && (
-                    <>
-                      <div className="fixed inset-0 z-40 bg-black bg-opacity-25 md:hidden" onClick={() => setShowCategoryDropdown(false)} />
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white border-2 border-gray-200 rounded-xl shadow-2xl z-50 max-h-80 overflow-y-auto">
-                        <div className="p-2">
-                          {getCategories().map((category) => (
-                            <button
-                              key={category.label}
-                              onClick={() => {
-                                setSelectedCategory(category.label);
-                                setSearchQuery(category.label);
-                                setShowCategoryDropdown(false);
-                              }}
-                              className="w-full px-4 py-4 text-left hover:bg-blue-50 text-gray-700 border-b border-gray-50 last:border-b-0 flex items-center transition-colors rounded-lg"
-                            >
-                              <span className="mr-3 text-lg flex-shrink-0">{category.icon}</span>
-                              <span className="font-medium">{category.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Location Field */}
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Location</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <input
-                      type="text"
-                      placeholder="Enter location, area..."
-                      value={filters.location}
-                      onChange={(e) => setFilters({...filters, location: e.target.value})}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-base"
-                    />
-                  </div>
-                </div>
-
-                {/* Budget Field */}
-                <div className="relative">
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Budget</label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                    <select 
-                      value={filters.maxPrice}
-                      onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:bg-white transition-all appearance-none text-base"
-                    >
-                      <option value="">Max. Price</option>
-                      {isVehicleCategory() ? (
-                        <>
-                          <option value="5000">$5,000</option>
-                          <option value="10000">$10,000</option>
-                          <option value="25000">$25,000</option>
-                          <option value="50000">$50,000</option>
-                          <option value="100000">$100,000+</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="50000">$50,000</option>
-                          <option value="100000">$100,000</option>
-                          <option value="200000">$200,000</option>
-                          <option value="500000">$500,000</option>
-                          <option value="1000000">$1,000,000+</option>
-                        </>
-                      )}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Search Button */}
-                <div className="relative">
-                  <button 
-                    onClick={handleSearch}
-                    className="w-full bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-xl hover:from-red-700 hover:to-red-800 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center space-x-3 transform hover:-translate-y-1 font-semibold text-lg active:scale-95"
-                  >
-                    <Search className="w-5 h-5" />
-                    <span>Search</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Advanced Search Link */}
-              <div className="text-center mt-6">
-                <button className="text-blue-600 hover:text-blue-700 font-medium underline">
-                  Advanced Search Options
+                  <Search className="w-4 md:w-5 h-4 md:h-5 mr-2" />
+                  Search Now
                 </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Recent Searches */}
-        {recentSearches.length > 0 && (
-          <div className="max-w-6xl mx-auto mt-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Searches</h3>
-            <div className="flex flex-wrap gap-2">
-              {recentSearches.map((search, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-full px-4 py-2 text-blue-600 border border-blue-200 hover:bg-blue-50 cursor-pointer flex items-center group shadow-sm text-sm"
-                >
-                  <span className="mr-2">{search}</span>
-                  <button
-                    onClick={() => clearRecentSearch(index)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
+            {/* Quick Search Suggestions - Responsive */}
+            <div className="text-center">
+              <p className="text-xs md:text-sm text-gray-500 mb-2 md:mb-3">Popular searches:</p>
+              <div className="flex flex-wrap justify-center gap-1.5 md:gap-2">
+                {activeTab === 'houses' && (
+                  <>
+                    <QuickSearchTag text="3 Bedroom" onClick={() => handleQuickSearch({ propertyType: '3-bedroom' })} />
+                    <QuickSearchTag text="Juba" onClick={() => handleQuickSearch({ location: 'JUBA' })} />
+                    <QuickSearchTag text="Furnished" onClick={() => handleQuickSearch({ propertyType: 'furnished' })} />
+                    <QuickSearchTag text="<$100k" onClick={() => handleQuickSearch({ maxPrice: '100000' })} />
+                  </>
+                )}
+                {activeTab === 'land' && (
+                  <>
+                    <QuickSearchTag text="Commercial" onClick={() => handleQuickSearch({ propertyType: 'commercial' })} />
+                    <QuickSearchTag text="Residential" onClick={() => handleQuickSearch({ propertyType: 'residential' })} />
+                    <QuickSearchTag text="Munuki" onClick={() => handleQuickSearch({ location: 'MUNUKI' })} />
+                    <QuickSearchTag text="Lease" onClick={() => setSelectedSubCategory('lease')} />
+                  </>
+                )}
+                {activeTab === 'vehicles' && (
+                  <>
+                    <QuickSearchTag text="Toyota" onClick={() => handleQuickSearch({ propertyType: 'toyota' })} />
+                    <QuickSearchTag text="SUVs" onClick={() => handleQuickSearch({ propertyType: 'suv' })} />
+                    <QuickSearchTag text="<$10k" onClick={() => handleQuickSearch({ maxPrice: '10000' })} />
+                    <QuickSearchTag text="Rental" onClick={() => setSelectedSubCategory('rent')} />
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Stats Section */}
-        <div className="max-w-6xl mx-auto mt-12 mb-16 bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-center">
-            <div>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">2,500+</p>
-              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1">Properties Available</p>
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-green-600 to-green-800 bg-clip-text text-transparent">1,200+</p>
-              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1">Vehicles in Stock</p>
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">500+</p>
-              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1">Happy Customers</p>
-            </div>
-            <div>
-              <p className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent">24/7</p>
-              <p className="text-xs sm:text-sm text-gray-600 font-medium mt-1">Customer Support</p>
-            </div>
+          {/* Stats Section - Responsive */}
+          <div className="mt-8 md:mt-12 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+            <StatCard number="2,500+" label="Properties" />
+            <StatCard number="1,200+" label="Vehicles" />
+            <StatCard number="800+" label="Land" />
+            <StatCard number="5,000+" label="Customers" />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function QuickSearchTag({ text, onClick }: { text: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="px-3 md:px-4 py-1.5 md:py-2 bg-blue-50 text-blue-700 rounded-full text-xs md:text-sm font-medium hover:bg-blue-100 transition-colors"
+    >
+      {text}
+    </button>
+  );
+}
+
+function StatCard({ number, label }: { number: string; label: string }) {
+  return (
+    <div className="bg-white rounded-lg md:rounded-xl p-3 md:p-6 text-center shadow-md md:shadow-lg">
+      <p className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+        {number}
+      </p>
+      <p className="text-xs md:text-sm text-gray-600 mt-1">{label}</p>
     </div>
   );
 }

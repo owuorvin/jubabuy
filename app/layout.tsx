@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { Providers } from './providers';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import ChatbaseWidget from '@/components/ChatbaseWidget';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -20,9 +23,12 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <div className="min-h-screen bg-gray-50">
-            {children}
+            <Header />
+            <main>{children}</main>
+            <Footer />
           </div>
         </Providers>
+        <ChatbaseWidget />
       </body>
     </html>
   );

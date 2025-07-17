@@ -1,28 +1,78 @@
 'use client';
 
-import { Heart, MapPin, Bed, Bath, Square, Camera } from 'lucide-react';
-import { Land, Car,Property } from '@/lib/db/schema';
+import { Heart, MapPin, Bed, Bath, Square, Camera, Car, Fuel, Calendar, Trees } from 'lucide-react';
+import { Land, Car as CarType, Property } from '@/lib/db/schema';
 import { useFavorites } from '@/hooks/use-favorites';
 import { formatPrice } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { getListingDetailUrl, getItemType } from '@/lib/utils/routing';
 
 interface PropertyCardProps {
-  property: Property | Car | Land | any; // Make it more flexible
+  property: Property | CarType | Land | any; // Make it more flexible
   type?: 'property' | 'car' | 'land';
   viewMode?: 'grid' | 'list';
 }
-export default function PropertyCard({ property, type = 'property', viewMode = 'grid' }: PropertyCardProps) {
+
+export default function PropertyCard({ property, type, viewMode = 'grid' }: PropertyCardProps) {
   const router = useRouter();
   const { isFavorite, toggleFavorite } = useFavorites();
-  const mainImage = property.images?.find((img: any) => img.isMain) || property.images?.[0];
+  
+  // Handle different image formats
+  const getMainImageUrl = () => {
+    // Case 1: Direct mainImage property (from featured endpoint)
+    if (property.mainImage) {
+      return property.mainImage;
+    }
+    
+    // Case 2: Images array
+    if (property.images && property.images.length > 0) {
+      const mainImg = property.images.find((img: any) => img.isMain) || property.images[0];
+      return mainImg?.url || mainImg; // Handle both object with url and direct url string
+    }
+    
+    // Default placeholder
+    return '/images/placeholder.jpg';
+  };
+  
+  const mainImageUrl = getMainImageUrl();
+  const imageCount = property.images?.length || (property.mainImage ? 1 : 0);
+  
+  // Determine the actual type
+  const actualType = type || getItemType(property);
 
   const handleClick = () => {
-    router.push(`/properties/${property.slug}`);
+    // Use the routing utility to get the correct URL
+    const detailUrl = getListingDetailUrl(property, actualType);
+    router.push(detailUrl);
   };
 
   const handleFavorite = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await toggleFavorite('property', property.id);
+    await toggleFavorite(actualType, property.id);
+  };
+
+  // Determine the status label based on type
+  const getStatusLabel = () => {
+    if (actualType === 'car') {
+      return property.status === 'active' ? 'Available' : 'Sold';
+    } else if (actualType === 'land') {
+      return property.status === 'active' ? 'For Sale' : 'Sold';
+    }
+    return property.status === 'active' ? 'Available' : 
+           property.status === 'sold' ? 'Sold' : 'Rented';
+  };
+
+  // Get the type badge label
+  const getTypeBadge = () => {
+    switch (actualType) {
+      case 'car':
+        return 'Vehicle';
+      case 'land':
+        return 'Land';
+      default:
+        return property.category === 'rent' ? 'For Rent' : 
+               property.category === 'sale' ? 'For Sale' : 'Short Stay';
+    }
   };
 
   return (
@@ -32,19 +82,30 @@ export default function PropertyCard({ property, type = 'property', viewMode = '
     >
       <div className="relative overflow-hidden h-64">
         <img 
-          src={mainImage?.url || '/images/placeholder.jpg'} 
+          src={mainImageUrl} 
           alt={property.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          onError={(e) => {
+            // Fallback to placeholder if image fails to load
+            (e.target as HTMLImageElement).src = '/images/placeholder.jpg';
+          }}
         />
         
-        <div className="absolute top-4 left-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            property.status === 'active' ? 'bg-green-500 text-white' :
-            property.status === 'sold' ? 'bg-red-500 text-white' :
-            'bg-yellow-500 text-white'
-          }`}>
-            {property.status}
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          {/* Type badge */}
+          <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white">
+            {getTypeBadge()}
           </span>
+          
+          {/* Status badge - Only show if not active */}
+          {property.status !== 'active' && (
+            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+              property.status === 'sold' ? 'bg-red-500 text-white' :
+              'bg-yellow-500 text-white'
+            }`}>
+              {getStatusLabel()}
+            </span>
+          )}
         </div>
 
         <div className="absolute top-4 right-4">
@@ -58,10 +119,12 @@ export default function PropertyCard({ property, type = 'property', viewMode = '
           </button>
         </div>
 
-        <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm flex items-center">
-          <Camera className="w-4 h-4 mr-1.5" />
-          {property.images?.length || 0} Photos
-        </div>
+        {imageCount > 0 && (
+          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm flex items-center">
+            <Camera className="w-4 h-4 mr-1.5" />
+            {imageCount} {imageCount === 1 ? 'Photo' : 'Photos'}
+          </div>
+        )}
       </div>
 
       <div className="p-6">
@@ -80,7 +143,8 @@ export default function PropertyCard({ property, type = 'property', viewMode = '
           <span className="text-sm">{property.location}</span>
         </div>
 
-        {property.bedrooms && (
+        {/* Property-specific details */}
+        {actualType === 'property' && property.bedrooms && (
           <div className="grid grid-cols-3 gap-3 py-4 border-y border-gray-100">
             <div className="text-center">
               <div className="flex items-center justify-center text-gray-400 mb-1">
@@ -101,7 +165,54 @@ export default function PropertyCard({ property, type = 'property', viewMode = '
                 <Square className="w-5 h-5" />
               </div>
               <p className="text-sm font-semibold text-gray-900">{property.area}</p>
-              <p className="text-xs text-gray-500">Sqft</p>
+              <p className="text-xs text-gray-500">Sqm</p>
+            </div>
+          </div>
+        )}
+
+        {/* Car-specific details */}
+        {actualType === 'car' && (
+          <div className="grid grid-cols-3 gap-3 py-4 border-y border-gray-100">
+            <div className="text-center">
+              <div className="flex items-center justify-center text-gray-400 mb-1">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{property.year}</p>
+              <p className="text-xs text-gray-500">Year</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center text-gray-400 mb-1">
+                <Car className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{property.mileage?.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">km</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center text-gray-400 mb-1">
+                <Fuel className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{property.fuel || 'Petrol'}</p>
+              <p className="text-xs text-gray-500">Fuel</p>
+            </div>
+          </div>
+        )}
+
+        {/* Land-specific details */}
+        {actualType === 'land' && (
+          <div className="grid grid-cols-2 gap-3 py-4 border-y border-gray-100">
+            <div className="text-center">
+              <div className="flex items-center justify-center text-gray-400 mb-1">
+                <Trees className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{property.area}</p>
+              <p className="text-xs text-gray-500">{property.unit || 'sqm'}</p>
+            </div>
+            <div className="text-center">
+              <div className="flex items-center justify-center text-gray-400 mb-1">
+                <Square className="w-5 h-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">{property.zoning || 'Mixed'}</p>
+              <p className="text-xs text-gray-500">Zoning</p>
             </div>
           </div>
         )}

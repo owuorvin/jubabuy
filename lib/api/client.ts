@@ -2,74 +2,181 @@
 import { Property, Car, Land, Agent, Image } from '@/lib/db/schema';
 
 export type ApiResponse<T> = {
-    data?: T;
-    error?: string;
-    pagination?: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
+  data?: T;
+  error?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
   };
-  
-  export type ListResponse<T> = {
-    items: T[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
+};
+
+export type ListResponse<T> = {
+  items: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
   };
+};
 
 class ApiClient {
   private baseUrl: string;
 
   constructor() {
     // Use your Vercel Functions URL or external API
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://jubabuy.vercel.app';
+    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || 'https://jubabuy.com';
   }
 
   private getAuthHeaders(): Record<string, string> {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') {
+      return {};
+    }
+    
     const token = localStorage.getItem('jubabuy_token');
     return token ? { Authorization: `Bearer ${token}` } : {};
   }
-
   private async fetcher<T>(
     endpoint: string,
     options?: RequestInit
   ): Promise<ApiResponse<T>> {
     try {
-      // Build headers object ensuring no undefined values
-      const authHeaders = this.getAuthHeaders();
-      const baseHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      const url = endpoint.startsWith('/') 
+        ? `${this.baseUrl}${endpoint}` 
+        : `${this.baseUrl}/${endpoint}`;
       
-      // Merge headers properly
+      // Build headers
+      const authHeaders = this.getAuthHeaders();
       const headers: HeadersInit = {
-        ...baseHeaders,
+        'Content-Type': 'application/json',
         ...authHeaders,
-        ...(options?.headers as Record<string, string> || {}),
       };
-
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+  
+      // Don't set Content-Type for FormData
+      if (options?.body instanceof FormData) {
+        delete (headers as any)['Content-Type'];
+      }
+  
+      // Merge with any provided headers
+      if (options?.headers) {
+        Object.assign(headers, options.headers);
+      }
+      
+      const response = await fetch(url, {
         ...options,
         headers,
       });
-
+  
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'API request failed' }));
-        throw new Error(error.message || 'API request failed');
+        const error = await response.json().catch(() => ({ error: 'API request failed' }));
+        throw new Error(error.error || 'API request failed');
       }
-
-      return await response.json();
+  
+      const data = await response.json();
+      
+      // Handle different response structures from the API
+      // 1. Check for standard list response structure (data.items)
+      if (data.data && typeof data.data === 'object' && 'items' in data.data) {
+        return {
+          data: data.data as T,
+          pagination: data.data.pagination
+        };
+      }
+      
+      // 2. Check for single item response (data without items)
+      if (data.data && typeof data.data === 'object' && !('items' in data.data)) {
+        return { data: data.data as T };
+      }
+      
+      // 3. Legacy structure with type-specific properties
+      if ('properties' in data || 'cars' in data || 'land' in data) {
+        const items = data.properties || data.cars || data.land || [];
+        return {
+          data: {
+            items,
+            pagination: data.pagination
+          } as unknown as T
+        };
+      }
+      
+      // 4. Direct data property
+      if ('data' in data) {
+        return { data: data.data as T };
+      }
+      
+      // 5. Fallback - assume the whole response is the data
+      return { data: data as T };
+      
     } catch (error) {
       console.error('API Error:', error);
       return { error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
+//   private async fetcher<T>(
+//     endpoint: string,
+//     options?: RequestInit
+//   ): Promise<ApiResponse<T>> {
+//     try {
+//       const url = endpoint.startsWith('/') 
+//         ? `${this.baseUrl}${endpoint}` 
+//         : `${this.baseUrl}/${endpoint}`;
+      
+//       // Build headers
+//       const authHeaders = this.getAuthHeaders();
+//       const headers: HeadersInit = {
+//         'Content-Type': 'application/json',
+//         ...authHeaders,
+//       };
 
+//       // Don't set Content-Type for FormData
+//       if (options?.body instanceof FormData) {
+//         delete (headers as any)['Content-Type'];
+//       }
+
+//       // Merge with any provided headers
+//       if (options?.headers) {
+//         Object.assign(headers, options.headers);
+//       }
+      
+//       const response = await fetch(url, {
+//         ...options,
+//         headers,
+//       });
+  
+//       if (!response.ok) {
+//         const error = await response.json().catch(() => ({ error: 'API request failed' }));
+//         throw new Error(error.error || 'API request failed');
+//       }
+  
+//       const data = await response.json();
+      
+//       // Handle different response structures from the API
+//       if ('properties' in data || 'cars' in data || 'land' in data) {
+//         // List response
+//         const items = data.properties || data.cars || data.land || [];
+//         return {
+//           data: {
+//             items,
+//             pagination: data.pagination
+//           } as unknown as T
+//         };
+//       } else if ('data' in data) {
+//         // Direct data response
+//         return { data: data.data };
+//       } else {
+//         // Assume the whole response is the data
+//         return { data: data as T };
+//       }
+
+      
+//     } catch (error) {
+//       console.error('API Error:', error);
+//       return { error: error instanceof Error ? error.message : 'Unknown error' };
+//     }
+//   }
 
   // ==================== PROPERTIES ====================
 
@@ -244,19 +351,75 @@ class ApiClient {
 
   // ==================== INQUIRIES ====================
 
+  // async submitInquiry(data: {
+  //   name: string;
+  //   email: string;
+  //   phone: string;
+  //   message?: string;
+  //   entityType: 'property' | 'car' | 'land';
+  //   entityId: string;
+  // }) {
+  //   return this.fetcher<{ success: boolean; inquiryId: string }>('/api/inquiries', {
+  //     method: 'POST',
+  //     body: JSON.stringify(data),
+  //   });
+  // }
+
   async submitInquiry(data: {
     name: string;
     email: string;
     phone: string;
     message?: string;
-    entityType: 'property' | 'car' | 'land';
-    entityId: string;
+    subject?: string; // Added for general inquiries
+    entityType?: 'property' | 'car' | 'land' | 'general'; // Made optional with 'general' option
+    entityId?: string; // Made optional
   }) {
+    // Default to general inquiry if no entity specified
+    const inquiryData = {
+      ...data,
+      entityType: data.entityType || 'general',
+      entityId: data.entityId || 'contact-form',
+    };
+  
     return this.fetcher<{ success: boolean; inquiryId: string }>('/api/inquiries', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify(inquiryData),
     });
   }
+  
+  // Add a method specifically for contact form submissions
+  async submitContactForm(data: {
+    name: string;
+    email: string;
+    phone: string;
+    subject: string;
+    message: string;
+  }) {
+    return this.submitInquiry({
+      ...data,
+      entityType: 'general',
+      entityId: 'contact-form',
+    });
+  }
+  
+  // Add a method specifically for listing-related inquiries
+  async submitListingInquiry(
+    entityType: 'property' | 'car' | 'land',
+    entityId: string,
+    data: {
+      name: string;
+      email: string;
+      phone: string;
+      message?: string;
+    }
+  ) {
+    return this.submitInquiry({
+      ...data,
+      entityType,
+      entityId,
+    });
+  }
+
 
   async getInquiries(params?: {
     status?: 'new' | 'contacted' | 'closed';
@@ -321,15 +484,9 @@ class ApiClient {
       formData.append(key, String(value));
     });
 
-    const headers = {
-      ...this.getAuthHeaders(),
-      // Remove Content-Type for FormData
-    };
-
     return this.fetcher<Image>('/api/images/upload', {
       method: 'POST',
       body: formData,
-      headers: headers as HeadersInit,
     });
   }
 
@@ -421,6 +578,9 @@ class ApiClient {
       `/api/admin/export?type=${entityType}&format=${format}`
     );
   }
+
+  
+
 }
 
 export const apiClient = new ApiClient();

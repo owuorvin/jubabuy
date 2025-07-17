@@ -5,7 +5,7 @@ import { JUBA_AREAS } from '../constants';
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Create default agent
+  // Create default agent +211981779330
   const [agent] = await db.insert(agents).values({
     name: 'JUBABUY LTD Sales Team',
     email: 'sales@jubabuy.com',

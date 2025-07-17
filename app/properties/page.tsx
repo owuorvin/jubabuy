@@ -1,7 +1,16 @@
 'use client';
 
-import ListingsPage from '@/components/pages/ListingsPage';
+import { Suspense } from 'react';
+import OptimizedListingsPage from '@/components/pages/OptimizedListingsPage';
+import LoadingState from '@/components/LoadingState';
 
 export default function PropertiesPage() {
-  return <ListingsPage category="properties" title="Houses for Sale" />;
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <OptimizedListingsPage 
+        category="properties" 
+        title="Houses for Sale"
+      />
+    </Suspense>
+  );
 }

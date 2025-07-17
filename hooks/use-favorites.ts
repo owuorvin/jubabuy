@@ -1,36 +1,63 @@
-import { useState, useCallback } from 'react';
-import { apiClient } from '@/lib/api/client';
+// hooks/use-favorites.ts
+import { useEffect, useState } from 'react';
+
+type ItemType = 'property' | 'car' | 'land';
+
+interface FavoriteItem {
+  id: string;
+  type: ItemType;
+}
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(false);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
 
-  const toggleFavorite = useCallback(async (
-    entityType: 'property' | 'car',
-    entityId: string
-  ) => {
-    setLoading(true);
-    const response = await apiClient.toggleFavorite(entityType, entityId);
-    
-    if (response.data) {
-      setFavorites(prev => {
-        const newSet = new Set(prev);
-        if (response.data?.favorited) {
-          newSet.add(entityId);
-        } else {
-          newSet.delete(entityId);
-        }
-        return newSet;
-      });
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('jubabuy_favorites');
+    if (stored) {
+      try {
+        setFavorites(JSON.parse(stored));
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+      }
     }
-    
-    setLoading(false);
-    return response.data?.favorited;
   }, []);
 
-  const isFavorite = useCallback((entityId: string) => {
-    return favorites.has(entityId);
+  // Save favorites to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('jubabuy_favorites', JSON.stringify(favorites));
   }, [favorites]);
 
-  return { favorites, toggleFavorite, isFavorite, loading };
+  const toggleFavorite = async (type: ItemType, id: string) => {
+    setFavorites(prev => {
+      const exists = prev.some(fav => fav.id === id && fav.type === type);
+      
+      if (exists) {
+        // Remove from favorites
+        return prev.filter(fav => !(fav.id === id && fav.type === type));
+      } else {
+        // Add to favorites
+        return [...prev, { id, type }];
+      }
+    });
+  };
+
+  const isFavorite = (id: string, type?: ItemType) => {
+    if (type) {
+      return favorites.some(fav => fav.id === id && fav.type === type);
+    }
+    // Check if ID exists in any type (backward compatibility)
+    return favorites.some(fav => fav.id === id);
+  };
+
+  const getFavoritesByType = (type: ItemType) => {
+    return favorites.filter(fav => fav.type === type);
+  };
+
+  return {
+    favorites,
+    toggleFavorite,
+    isFavorite,
+    getFavoritesByType,
+  };
 }

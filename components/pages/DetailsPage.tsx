@@ -76,7 +76,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
   };
   
   const handleContact = (method: 'call' | 'whatsapp') => {
-    const phone = '211704049044';
+    const phone = '+211981779330';
     
     if (method === 'call') {
       window.location.href = `tel:+${phone}`;
@@ -371,7 +371,7 @@ export default function DetailsPage({ itemId, type }: DetailsPageProps) {
                   className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
                 >
                   <Phone className="w-5 h-5 mr-2" />
-                  {showPhoneNumber ? '+211 704 049 044' : 'Show Phone Number'}
+                  {showPhoneNumber ? '+211 981 779 330' : 'Show Phone Number'}
                 </button>
                 
                 <button

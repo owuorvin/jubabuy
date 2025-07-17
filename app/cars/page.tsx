@@ -1,7 +1,14 @@
+// app/cars/page.tsx
 'use client';
 
-import ListingsPage from '@/components/pages/ListingsPage';
+import { Suspense } from 'react';
+import ListingsPage from '@/components/pages/OptimizedListingsPage';
+import LoadingState from '@/components/LoadingState';
 
 export default function CarsPage() {
-  return <ListingsPage category="cars" title="Cars for Sale" />;
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ListingsPage category="cars" title="Cars for Sale" />
+    </Suspense>
+  );
 }

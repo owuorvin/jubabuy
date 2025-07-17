@@ -1,7 +1,14 @@
+// app/land/page.tsx
 'use client';
 
-import ListingsPage from '@/components/pages/ListingsPage';
+import { Suspense } from 'react';
+import ListingsPage from '@/components/pages/OptimizedListingsPage';
+import LoadingState from '@/components/LoadingState';
 
 export default function LandPage() {
-  return <ListingsPage category="land" title="Land & Plots for Sale" />;
+  return (
+    <Suspense fallback={<LoadingState />}>
+      <ListingsPage category="land" title="Land & Plots for Sale" />
+    </Suspense>
+  );
 }

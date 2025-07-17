@@ -25,7 +25,7 @@ export function transformApiProperty(apiData: any): Property {
     agent: apiData.agent || {
       id: apiData.agentId || 'default',
       name: 'JUBABUY Agent',
-      phone: '+211704049044',
+      phone: '+211981779330',
       email: 'info@jubabuy.com'
     },
     images: apiData.images || []
@@ -56,7 +56,7 @@ export function transformApiCar(apiData: any): Car {
     agent: apiData.agent || {
       id: apiData.agentId || 'default',
       name: 'JUBABUY Agent',
-      phone: '+211704049044',
+      phone: '+211981779330',
       email: 'info@jubabuy.com'
     },
     images: apiData.images || []
@@ -83,7 +83,7 @@ export function transformApiLand(apiData: any): Land {
     agent: apiData.agent || {
       id: apiData.agentId || 'default',
       name: 'JUBABUY Agent',
-      phone: '+211704049044',
+      phone: '+211981779330',
       email: 'info@jubabuy.com'
     },
     images: apiData.images || []

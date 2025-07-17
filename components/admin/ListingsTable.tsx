@@ -69,7 +69,10 @@ export default function ListingsTable({ category, searchQuery = '', filterStatus
           items = responseData.cars;
         } else if ('land' in responseData && Array.isArray(responseData.land)) {
           items = responseData.land;
-        } else if (Array.isArray(responseData)) {
+        } 
+        if ('items' in responseData && Array.isArray(responseData.items)) {
+          items = responseData.items;
+        }else if (Array.isArray(responseData)) {
           items = responseData;
         }
         
@@ -78,6 +81,7 @@ export default function ListingsTable({ category, searchQuery = '', filterStatus
         // Set pagination if it exists
         if (responseData.pagination) {
           setTotalPages(responseData.pagination.pages || 1);
+          //setTotalCount(responseData.pagination.total || 0);
         }
       }
     } catch (error) {

@@ -65,7 +65,6 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="text-center text-sm text-gray-600 mt-4">
-          Demo: admin@ariesltd.com / admin123
         </p>
       </div>
     </div>
